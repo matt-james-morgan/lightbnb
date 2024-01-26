@@ -1,6 +1,6 @@
 //const properties = require("./json/properties.json");
 const users = require("./json/users.json");
-const {Pool} = require("pg");
+const { Pool } = require("pg");
 
 const pool = new Pool({
   user: 'labber',
@@ -19,12 +19,12 @@ const pool = new Pool({
  */
 const getUserWithEmail = function (email) {
   return pool.query('SELECT * FROM users WHERE email = $1', [email])
-  .then((res)=>{
-    return Promise.resolve(res.rows[0] || null);
-  }).catch((err)=>{
-    console.log(err.message);
-  });
-  
+    .then((res) => {
+      return Promise.resolve(res.rows[0] || null);
+    }).catch((err) => {
+      console.log(err.message);
+    });
+
 };
 
 /**
@@ -34,12 +34,12 @@ const getUserWithEmail = function (email) {
  */
 const getUserWithId = function (id) {
   return pool.query('SELECT * FROM users WHERE id = $1', [id])
-  .then((res)=>{
-    return Promise.resolve(res.rows[0] || null);
-  }).catch((err)=>{
-    console.log(err.message);
-  });
-  
+    .then((res) => {
+      return Promise.resolve(res.rows[0] || null);
+    }).catch((err) => {
+      console.log(err.message);
+    });
+
 };
 
 /**
@@ -53,12 +53,12 @@ const addUser = function (user) {
     values: [user.name, user.email, user.password]
   }
   return pool.query(query)
-  .then((res)=>{
-    return new Promise.resolve(res.rows);
-  }).catch((err)=>{
-    console.log(err.message);
-  });
-  
+    .then((res) => {
+      return new Promise.resolve(res.rows);
+    }).catch((err) => {
+      console.log(err.message);
+    });
+
 };
 
 /// Reservations
@@ -69,7 +69,7 @@ const addUser = function (user) {
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function (guest_id, limit = 10) {
-  
+
   const query = {
     text: `
     SELECT reservations.*, properties.*, AVG(rating) as average_rating 
@@ -83,15 +83,15 @@ const getAllReservations = function (guest_id, limit = 10) {
     values: [guest_id, limit]
   }
 
- return pool.query(query)
-  .then((res)=>{
-    console.log(res.rows);
-     return Promise.resolve(res.rows);
-  }).catch((err)=>{
-    console.log(err.message);
-    return Promise.reject(err)
-  });
-  
+  return pool.query(query)
+    .then((res) => {
+      console.log(res.rows);
+      return Promise.resolve(res.rows);
+    }).catch((err) => {
+      console.log(err.message);
+      return Promise.reject(err)
+    });
+
 };
 
 /// Properties
@@ -112,26 +112,26 @@ const getAllProperties = (options, limit = 10) => {
   JOIN property_reviews ON properties.id = property_id
   `;
 
-  if(options.city){
+  if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += ` WHERE city LIKE $${queryParams.length}`;
   }
 
-  if(options.minimum_price_per_night){
+  if (options.minimum_price_per_night) {
 
-    queryParams.push(`${options.minimum_price_per_night * 100 }`);
+    queryParams.push(`${options.minimum_price_per_night * 100}`);
     queryString += ` AND properties.cost_per_night > $${queryParams.length}`;
-    
+
   }
 
-  if(options.maximum_price_per_night){
+  if (options.maximum_price_per_night) {
     queryParams.push(`${options.maximum_price_per_night * 100}`);
     queryString += ` AND properties.cost_per_night < $${queryParams.length}`;
   }
-  
+
   queryString += `GROUP BY properties.id`;
 
-  if(options.minimum_rating){
+  if (options.minimum_rating) {
     queryParams.push(`${options.minimum_rating}`);
     queryString += ` HAVING AVG(property_reviews.rating) > $${queryParams.length}`;
   }
@@ -148,7 +148,7 @@ const getAllProperties = (options, limit = 10) => {
     .query(queryString, queryParams)
     .then((result) => {
       console.log(queryString);
-     
+
       return result.rows;
     })
     .catch((err) => {
@@ -162,10 +162,38 @@ const getAllProperties = (options, limit = 10) => {
  * @return {Promise<{}>} A promise to the property.
  */
 const addProperty = function (property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+ 
+  const queryParams = [];
+  const keys = Object.keys(property);
+  const voidParam = 0;
+
+  const placeholders = keys.map((key, index) => `$${index + 1}`).join(',');
+
+  console.log(placeholders);
+
+  let queryString = `INSERT INTO properties(title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url,  street,  country, city, province, post_code,  owner_id )
+  VALUES(${placeholders})
+  RETURNING *;
+  `;
+
+
+
+  keys.forEach((key) => {
+    queryParams.push(property[key] || voidParam);
+  })
+
+console.log(queryParams);
+  return pool
+    .query(queryString, queryParams)
+    .then((result) => {
+
+
+      return Promise.resolve(result.rows[0]);
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
+
 };
 
 module.exports = {
