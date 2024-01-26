@@ -70,6 +70,7 @@ const addUser = function (user) {
  */
 const getAllReservations = function (guest_id, limit = 10) {
 
+
   const query = {
     text: `
     SELECT reservations.*, properties.*, AVG(rating) as average_rating 
@@ -112,6 +113,7 @@ const getAllProperties = (options, limit = 10) => {
   JOIN property_reviews ON properties.id = property_id
   `;
 
+  //Logic to check if specifc opetions were passed to the query
   if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += ` WHERE city LIKE $${queryParams.length}`;
@@ -143,12 +145,10 @@ const getAllProperties = (options, limit = 10) => {
   ORDER BY cost_per_night
   LIMIT $${queryParams.length};
   `;
-  console.log(queryString);
+  
   return pool
     .query(queryString, queryParams)
     .then((result) => {
-      console.log(queryString);
-
       return result.rows;
     })
     .catch((err) => {
@@ -167,9 +167,10 @@ const addProperty = function (property) {
   const keys = Object.keys(property);
   const voidParam = 0;
 
+  //Creates string of placeholders for values in query (eg, $1, 2$), uses join so that no comma is added to the end
   const placeholders = keys.map((key, index) => `$${index + 1}`).join(',');
 
-  console.log(placeholders);
+ 
 
   let queryString = `INSERT INTO properties(title, description, number_of_bedrooms, number_of_bathrooms, parking_spaces, cost_per_night, thumbnail_photo_url, cover_photo_url,  street,  country, city, province, post_code,  owner_id )
   VALUES(${placeholders})
@@ -177,17 +178,15 @@ const addProperty = function (property) {
   `;
 
 
-
+  //Loops over each key and pushes the data to queryParams, if the data is empty we substitute with voidParam
   keys.forEach((key) => {
     queryParams.push(property[key] || voidParam);
-  })
+  });
 
-console.log(queryParams);
+
   return pool
     .query(queryString, queryParams)
     .then((result) => {
-
-
       return Promise.resolve(result.rows[0]);
     })
     .catch((err) => {
